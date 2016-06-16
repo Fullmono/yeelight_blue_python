@@ -3,9 +3,9 @@
 #author :zhaohui mail:zhaohui-sol@foxmail.com\
 
 from bluepy.btle import Peripheral,DefaultDelegate
-import logging,time
+import logging
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.NOSET)
 
 class YeelightService:
     """
@@ -67,6 +67,7 @@ class YeelightService:
         self.peripher = Peripheral(deviceAddr = address)
         self.service = self.peripher.getServiceByUUID(YeelightService.SERVICE)
         self.peripher.withDelegate(self.delegate)
+        self.request_state()
 
     def __character_by_uuid__(self,uuid):
         '''
@@ -132,12 +133,23 @@ class YeelightService:
         turn on the light with white and full brightness
         '''
         self.control(255,255,255,brightness)
+        self.stateOn = True
 
     def turn_off(self):
         '''
         turn off the light
         '''
         self.control(0,0,0,0)
+        self.stateOn = False
+        
+    def toggle(self):
+    	'''
+        toggle the light
+        '''
+        if self.stateOn:
+        	self.turn_off()
+        else:
+        	self.turn_on()
 
     def control(self,r,g,b,a):
         '''
@@ -155,6 +167,7 @@ class YeelightService:
         '''
         assert 0 < mins < 24 * 60
         self.__write_character__(YeelightService.CHAR_DELAY,self.__format_request__("%d,1" % mins,8))
+        self.stateOn = True
 
     def delay_off(self,mins = 5):
         '''
@@ -216,36 +229,19 @@ class YeelightService:
         use the current color as a default startup color
         '''
         self.__write_character__(YeelightService.CHAR_COLOR_EFFECT,self.__format_request__("DF",2))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-if __name__ == "__main__":
-    x = YeelightService("78:A5:04:77:D0:43")
-    x.turn_on()
-    #time.sleep(5)
-    #x.control(100,25,25,30)
-    #time.sleep(5)
-    #x.control(25,100,25,50)
-    #time.sleep(5)
-    #x.control(25,25,100,70)
-    #time.sleep(5)
-    #x.turn_off()
-    x.start_color_flow([(250,0,0,50,3),(0,250,0,50,3),(0,0,250,50,3)])
-    print x.delay_status()
-    print x.control_status()
-
-
+        
+    def request_state(self):
+    	'''
+        Verify the actual state of the light
+        '''
+    	request = self.control_status()
+    	self.stateOn = request['data'].split(',')[3] != '0'
+    
+    def get_state(self):
+    	'''
+        Return state of the light
+        '''
+    	return self.stateOn
 
 
 
